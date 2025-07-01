@@ -12,6 +12,7 @@
 #include "graphics/ScreenFonts.h"
 #include "graphics/SharedUIDisplay.h"
 #include "graphics/images.h"
+#include "graphics/BRC.h"
 #include "main.h"
 #include "target_specific.h"
 #include <OLEDDisplay.h>
@@ -641,6 +642,16 @@ void UIRenderer::drawDeviceFocused(OLEDDisplay *display, OLEDDisplayUiState *sta
 
     line += 1;
 
+    // === BRC Address (Burning Man) ===
+#if HAS_GPS
+    if ((gpsStatus->getIsConnected() && gpsStatus->getHasLock()) || config.position.fixed_position) {
+        auto brcDisplayLine = BRCAddress(int32_t(gpsStatus->getLatitude()), int32_t(gpsStatus->getLongitude()));
+        int brcTextWidth = display->getStringWidth(brcDisplayLine);
+        int brcX = (SCREEN_WIDTH - brcTextWidth) / 2;
+        display->drawString(brcX, getTextPositions(display)[line++], brcDisplayLine);
+    }
+#endif
+
     // === Fourth & Fifth Rows: Node Identity ===
     int textWidth = 0;
     int nameX = 0;
@@ -841,7 +852,7 @@ void UIRenderer::drawIconScreen(const char *upperMsg, OLEDDisplay *display, OLED
 
     display->setFont(FONT_MEDIUM);
     display->setTextAlignment(TEXT_ALIGN_LEFT);
-    const char *title = "meshtastic.org";
+    const char *title = "Peachy 7:30 & B";
     display->drawString(x + getStringCenteredX(title), y + SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM, title);
     display->setFont(FONT_SMALL);
 

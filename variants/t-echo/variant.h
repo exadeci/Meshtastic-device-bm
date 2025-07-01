@@ -68,6 +68,10 @@ extern "C" {
 #define BUTTON_TOUCH_ACTIVE_LOW true
 #define BUTTON_TOUCH_ACTIVE_PULLUP true
 
+// Main user button for BaseUI (use the physical side button)
+#define BUTTON_PIN PIN_BUTTON1
+#define BUTTON_NEED_PULLUP
+
 #define BUTTON_CLICK_MS 400
 #define BUTTON_TOUCH_MS 200
 

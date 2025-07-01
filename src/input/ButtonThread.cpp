@@ -14,6 +14,7 @@
 #include "modules/ExternalNotificationModule.h"
 #include "power.h"
 #include "sleep.h"
+#include "PowerFSM.h"
 #ifdef ARCH_PORTDUINO
 #include "platform/portduino/PortduinoGlue.h"
 #endif
@@ -161,6 +162,19 @@ int32_t ButtonThread::runOnce()
         leadUpPlayed = false;
         leadUpSequenceActive = false;
         resetLeadUpSequence();
+
+        #ifdef TTGO_T_ECHO
+                // Special handling for T-Echo touch button: turn off backlight when released after short press
+                if (_touchQuirk && _pinNum == PIN_BUTTON_TOUCH) {
+                    // Only turn off if it was a short press (not a long press that's being handled elsewhere)
+                    uint32_t pressDuration = millis() - buttonPressStartTime;
+                    if (pressDuration < _longPressTime) {
+        #ifdef PIN_EINK_EN
+                        digitalWrite(PIN_EINK_EN, LOW); // Turn off backlight
+        #endif
+                    }
+                }
+        #endif
     }
 
     buttonWasPressed = buttonCurrentlyPressed;
@@ -174,6 +188,19 @@ int32_t ButtonThread::runOnce()
         evt.touchY = 0;
         switch (btnEvent) {
         case BUTTON_EVENT_PRESSED: {
+            #ifdef TTGO_T_ECHO
+                        // Special handling for T-Echo touch button: turn on backlight immediately when touched
+                        if (_touchQuirk && _pinNum == PIN_BUTTON_TOUCH) {
+            #ifdef PIN_EINK_EN
+                            digitalWrite(PIN_EINK_EN, HIGH); // Turn on backlight immediately
+                            // Wake screen when backlight turns on
+                            if (powerFSM.getState() == &stateDARK) {
+                                powerFSM.trigger(EVENT_INPUT);
+                            }
+            #endif
+                        }
+            #endif
+
             // Forward single press to InputBroker (but NOT as DOWN/SELECT, just forward a "button press" event)
             evt.inputEvent = _singlePress;
             // evt.kbchar = _singlePress; // todo: fix this. Some events are kb characters rather than event types
@@ -190,6 +217,22 @@ int32_t ButtonThread::runOnce()
             // Uncommon T-Echo hardware bug, LoRa TX triggers touch button
             if (_touchQuirk && RadioLibInterface::instance && RadioLibInterface::instance->isSending())
                 break;
+
+                #ifdef TTGO_T_ECHO
+                            // Special handling for T-Echo touch button: turn on backlight while held
+                            if (_touchQuirk && _pinNum == PIN_BUTTON_TOUCH) {
+                #ifdef PIN_EINK_EN
+                                digitalWrite(PIN_EINK_EN, HIGH); // Turn on backlight
+                                // Wake screen when backlight turns on
+                                if (powerFSM.getState() == &stateDARK) {
+                                    powerFSM.trigger(EVENT_INPUT);
+                                }
+                #endif
+                                // Don't send the normal long press event for touch button backlight control
+                                waitingForLongPress = false;
+                                break;
+                            }
+                #endif
 
             // Check if this is part of a short-press + long-press combination
             if (_shortLong != INPUT_BROKER_NONE && waitingForLongPress &&
@@ -254,6 +297,19 @@ int32_t ButtonThread::runOnce()
         case BUTTON_EVENT_LONG_RELEASED: {
 
             LOG_INFO("LONG PRESS RELEASE");
+
+            #ifdef TTGO_T_ECHO
+                        // Special handling for T-Echo touch button: turn off backlight when released
+                        if (_touchQuirk && _pinNum == PIN_BUTTON_TOUCH) {
+            #ifdef PIN_EINK_EN
+                            digitalWrite(PIN_EINK_EN, LOW); // Turn off backlight
+            #endif
+                            // Reset combination tracking
+                            waitingForLongPress = false;
+                            break;
+                        }
+            #endif
+
             if (millis() > 30000 && _longLongPress != INPUT_BROKER_NONE &&
                 (millis() - buttonPressStartTime) >= _longLongPressTime) {
                 evt.inputEvent = _longLongPress;

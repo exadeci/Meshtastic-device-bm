@@ -961,6 +961,7 @@ void setup()
     };
     touchConfig.singlePress = INPUT_BROKER_NONE;
     touchConfig.longPress = INPUT_BROKER_BACK;
+    touchConfig.touchQuirk = true; // Enable T-Echo touch quirk protection
     TouchButtonThread->initButton(touchConfig);
 #endif
 
